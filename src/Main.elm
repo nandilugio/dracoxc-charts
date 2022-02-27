@@ -5,6 +5,7 @@ import Browser.Events
 import Chart as C
 import Chart.Attributes as CA
 import Chart.Events as CE
+import Dict exposing (Dict)
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
@@ -16,8 +17,7 @@ import Tuple
 
 
 type alias PilotsAltitude =
-    -- TODO: Probably using a Dict would make the chart faster. See pilotAltitude
-    List ( String, Float )
+    Dict String Float
 
 
 type alias TaskMoment =
@@ -59,10 +59,8 @@ type Msg
 
 pilotAltitude : String -> PilotsAltitude -> Float
 pilotAltitude pilotName pilotsAltitude =
-    List.filter (\nameAndAltitude -> Tuple.first nameAndAltitude == pilotName) pilotsAltitude
-        |> List.head
-        |> Maybe.withDefault ( "", 0 )
-        |> Tuple.second
+    Dict.get pilotName pilotsAltitude
+        |> Maybe.withDefault 0
 
 
 pilotsAltitudeDecoder : JD.Decoder PilotsAltitude
@@ -71,6 +69,7 @@ pilotsAltitudeDecoder =
         (JD.field "p" JD.string)
         (JD.field "a" JD.float)
         |> JD.list
+        |> JD.andThen (\l -> JD.succeed (Dict.fromList l))
 
 
 taskMomentsDecoder : JD.Decoder (List TaskMoment)
@@ -92,27 +91,27 @@ init jsonTaskMoments =
 
                 domainMin =
                     List.map
-                        (\tm -> List.map Tuple.second tm.pilotsAltitude |> List.minimum |> Maybe.withDefault 0)
+                        (\tm -> Dict.values tm.pilotsAltitude |> List.minimum |> Maybe.withDefault 0)
                         taskMoments
                         |> List.minimum
                         |> Maybe.withDefault 0
 
                 domainMax =
                     List.map
-                        (\tm -> List.map Tuple.second tm.pilotsAltitude |> List.maximum |> Maybe.withDefault 0)
+                        (\tm -> Dict.values tm.pilotsAltitude |> List.maximum |> Maybe.withDefault 0)
                         taskMoments
                         |> List.maximum
                         |> Maybe.withDefault 0
 
                 rangeMin =
                     List.head taskMoments
-                        |> Maybe.withDefault (TaskMoment 0 [])
+                        |> Maybe.withDefault (TaskMoment 0 Dict.empty)
                         |> .t
 
                 rangeMax =
                     List.reverse taskMoments
                         |> List.head
-                        |> Maybe.withDefault (TaskMoment 0 [])
+                        |> Maybe.withDefault (TaskMoment 0 Dict.empty)
                         |> .t
 
                 rangeCount =
