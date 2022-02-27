@@ -3,18 +3,16 @@
 <head>
     <meta charset=utf-8>
     <title>Main</title>
+    <script src="data_sm.js"></script>
     <script src="main.js"></script>
 </head>
-
 <body>
-
-<div id="myapp" style="width: 300px; height: 300px; background-color: red"></div>
-
+<div id="myapp"></div>
 <script>
     var app = Elm.Main.init({
-        node: document.getElementById('myapp')
+        node: document.getElementById('myapp'),
+        flags: json_data
     });
 </script>
-
 </body>
 </html>

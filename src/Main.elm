@@ -8,20 +8,21 @@ import Chart.Events as CE
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
+import Json.Decode as JD
 import List
 import Task
 import Time
 import Tuple
 
 
-type alias PilotsHeight =
-    -- TODO: Probably using a Dict would make the chart faster. See pilotHeight
+type alias PilotsAltitude =
+    -- TODO: Probably using a Dict would make the chart faster. See pilotAltitude
     List ( String, Float )
 
 
 type alias TaskMoment =
     { t : Float
-    , pilotsHeight : PilotsHeight
+    , pilotsAltitude : PilotsAltitude
     }
 
 
@@ -31,7 +32,7 @@ type alias Model =
     , pilotNames : List String
     , taskMoments : List TaskMoment
     , taskMomentsStats :
-        { domainMin : Float -- Domain = values (vertical axis)
+        { domainMin : Float -- Domain = altitudes (vertical axis)
         , domainMax : Float
         , rangeMin : Float -- Range = time (horizontal axis)
         , rangeMax : Float
@@ -56,78 +57,112 @@ type Msg
     | MouseLeft
 
 
-pilotHeight : String -> PilotsHeight -> Float
-pilotHeight pilotName pilotsHeight =
-    List.filter (\nameAndHeight -> Tuple.first nameAndHeight == pilotName) pilotsHeight
+pilotAltitude : String -> PilotsAltitude -> Float
+pilotAltitude pilotName pilotsAltitude =
+    List.filter (\nameAndAltitude -> Tuple.first nameAndAltitude == pilotName) pilotsAltitude
         |> List.head
         |> Maybe.withDefault ( "", 0 )
         |> Tuple.second
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    let
-        taskMoments =
-            [ TaskMoment 1645899285000 [ ( "one", 1250 ), ( "two", 1250 ) ]
-            , TaskMoment 1645899286000 [ ( "one", 1270 ), ( "two", 1260 ) ]
-            , TaskMoment 1645899287000 [ ( "one", 1290 ), ( "two", 1280 ) ]
-            , TaskMoment 1645899288000 [ ( "one", 1300 ), ( "two", 1300 ) ]
-            , TaskMoment 1645899289000 [ ( "one", 1310 ), ( "two", 1350 ) ]
-            , TaskMoment 1645899290000 [ ( "one", 1300 ), ( "two", 1250 ) ]
-            , TaskMoment 1645899291000 [ ( "one", 1200 ), ( "two", 1200 ) ]
-            ]
+pilotsAltitudeDecoder : JD.Decoder PilotsAltitude
+pilotsAltitudeDecoder =
+    JD.map2 Tuple.pair
+        (JD.field "p" JD.string)
+        (JD.field "a" JD.float)
+        |> JD.list
 
-        domainMin =
-            List.map
-                (\tm -> List.map Tuple.second tm.pilotsHeight |> List.minimum |> Maybe.withDefault 0)
-                taskMoments
-                |> List.minimum
-                |> Maybe.withDefault 0
 
-        domainMax =
-            List.map
-                (\tm -> List.map Tuple.second tm.pilotsHeight |> List.maximum |> Maybe.withDefault 0)
-                taskMoments
-                |> List.maximum
-                |> Maybe.withDefault 0
+taskMomentsDecoder : JD.Decoder (List TaskMoment)
+taskMomentsDecoder =
+    JD.map2 TaskMoment
+        (JD.field "t" JD.float)
+        (JD.field "pa" pilotsAltitudeDecoder)
+        |> JD.list
 
-        rangeMin =
-            List.head taskMoments
-                |> Maybe.withDefault (TaskMoment 0 [])
-                |> .t
 
-        rangeMax =
-            List.reverse taskMoments
-                |> List.head
-                |> Maybe.withDefault (TaskMoment 0 [])
-                |> .t
+init : String -> ( Model, Cmd Msg )
+init jsonTaskMoments =
+    case JD.decodeString taskMomentsDecoder jsonTaskMoments of
+        Ok taskMoments ->
+            let
+                pilotNames =
+                    --[ "granadaxc1", "LatigoSr", "AirForceCuevas", "pajarillo", "Yorgue", "alouro001", "superolmin" ]
+                    [ "AirForceCuevas", "pajarillo", "superolmin" ]
 
-        rangeCount =
-            List.length taskMoments
+                domainMin =
+                    List.map
+                        (\tm -> List.map Tuple.second tm.pilotsAltitude |> List.minimum |> Maybe.withDefault 0)
+                        taskMoments
+                        |> List.minimum
+                        |> Maybe.withDefault 0
 
-        rangeStep =
-            (rangeMax - rangeMin) / toFloat rangeCount
-    in
-    ( { debugMsg = ""
-      , timeZone = Time.utc
-      , pilotNames = [ "one", "two" ]
-      , taskMoments = taskMoments
-      , taskMomentsStats =
-            { domainMin = domainMin
-            , domainMax = domainMax
-            , rangeMin = rangeMin
-            , rangeMax = rangeMax
-            , rangeCount = rangeCount
-            , rangeStep = rangeStep
-            }
-      , displayedTaskMoments = toFloat rangeCount
-      , animating = False
-      , animationSpeedFactor = 8
-      , hovering = False
-      , hoveringOverPoint = CE.Point 0 0
-      }
-    , Task.perform GotTimeZone Time.here
-    )
+                domainMax =
+                    List.map
+                        (\tm -> List.map Tuple.second tm.pilotsAltitude |> List.maximum |> Maybe.withDefault 0)
+                        taskMoments
+                        |> List.maximum
+                        |> Maybe.withDefault 0
+
+                rangeMin =
+                    List.head taskMoments
+                        |> Maybe.withDefault (TaskMoment 0 [])
+                        |> .t
+
+                rangeMax =
+                    List.reverse taskMoments
+                        |> List.head
+                        |> Maybe.withDefault (TaskMoment 0 [])
+                        |> .t
+
+                rangeCount =
+                    List.length taskMoments
+
+                rangeStep =
+                    (rangeMax - rangeMin) / toFloat rangeCount
+            in
+            ( { debugMsg = ""
+              , timeZone = Time.utc
+              , pilotNames = pilotNames
+              , taskMoments = taskMoments
+              , taskMomentsStats =
+                    { domainMin = domainMin
+                    , domainMax = domainMax
+                    , rangeMin = rangeMin
+                    , rangeMax = rangeMax
+                    , rangeCount = rangeCount
+                    , rangeStep = rangeStep
+                    }
+              , displayedTaskMoments = toFloat rangeCount
+              , animating = False
+              , animationSpeedFactor = 8
+              , hovering = False
+              , hoveringOverPoint = CE.Point 0 0
+              }
+            , Task.perform GotTimeZone Time.here
+            )
+
+        Err err ->
+            ( { debugMsg = JD.errorToString err
+              , timeZone = Time.utc
+              , pilotNames = []
+              , taskMoments = []
+              , taskMomentsStats =
+                    { domainMin = 0
+                    , domainMax = 0
+                    , rangeMin = 0
+                    , rangeMax = 0
+                    , rangeCount = 0
+                    , rangeStep = 0
+                    }
+              , displayedTaskMoments = 0
+              , animating = False
+              , animationSpeedFactor = 8
+              , hovering = False
+              , hoveringOverPoint = CE.Point 0 0
+              }
+            , Cmd.none
+            )
 
 
 subscriptions : Model -> Sub Msg
@@ -209,6 +244,7 @@ view model =
             model.taskMomentsStats
     in
     H.div []
+        -- TODO: sizing still needed?
         [ H.div [ HA.style "width" "600px", HA.style "height" "300px" ]
             [ C.chart
                 [ CA.width 600
@@ -244,7 +280,7 @@ view model =
                     (List.map
                         (\name ->
                             C.interpolated
-                                (\taskMoment -> pilotHeight name taskMoment.pilotsHeight)
+                                (\taskMoment -> pilotAltitude name taskMoment.pilotsAltitude)
                                 [ CA.linear, CA.width 2 ]
                                 []
                                 |> C.named name
