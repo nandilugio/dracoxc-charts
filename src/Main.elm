@@ -75,7 +75,7 @@ pilotsAltitudeDecoder =
 taskMomentsDecoder : JD.Decoder (List TaskMoment)
 taskMomentsDecoder =
     JD.map2 TaskMoment
-        (JD.field "t" JD.float)
+        (JD.field "t" JD.float |> JD.andThen (\s -> JD.succeed (s * 1000)))
         (JD.field "pa" pilotsAltitudeDecoder)
         |> JD.list
 
@@ -318,6 +318,8 @@ view model =
                 , H.option [ HA.value "8", HA.selected (model.animationSpeedFactor == 8) ] [ H.text "8x" ]
                 , H.option [ HA.value "16", HA.selected (model.animationSpeedFactor == 16) ] [ H.text "16x" ]
                 , H.option [ HA.value "32", HA.selected (model.animationSpeedFactor == 32) ] [ H.text "32x" ]
+                , H.option [ HA.value "64", HA.selected (model.animationSpeedFactor == 64) ] [ H.text "64x" ]
+                , H.option [ HA.value "128", HA.selected (model.animationSpeedFactor == 128) ] [ H.text "128x" ]
                 ]
             ]
 
