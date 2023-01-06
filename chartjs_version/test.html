@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset=utf-8>
+  <title>Test</title>
+  <link href="https://cdn.jsdelivr.net/npm/reset-css@5.0.1/reset.min.css" rel="stylesheet"></link>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1"></script>
+	<script src="https://cdn.jsdelivr.net/npm/luxon@2.3.1"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.1.0"></script>
+</head>
+<body>
+
+  <div>
+    <canvas id="myChart"></canvas>
+  </div>
+
+	<script>
+
+		const now_ms = Date.now()
+
+    let current_t = now_ms
+    const p = function(h,t) {
+      current_t = t || current_t
+      point = {y: h, x: current_t}
+      current_t += 1000
+			return point
+    }
+
+		const config = {
+			type: 'line',
+			data: {
+        datasets: [{
+          label: 'yorgue',
+          backgroundColor: 'green',
+          borderColor: 'green',
+          data: [p(1100, now_ms)].concat([1150,1220,1230,1220,1210,1200].map(h => p(h))),
+        },{
+          label: 'latigojr',
+          backgroundColor: 'rgb(255, 99, 132)',
+          borderColor: 'rgb(255, 99, 132)',
+          data: [p(1100, now_ms)].concat([1190,1250,1300,1320,1310,1300,1290,1280].map(h => p(h))),
+        }]
+      },
+			options: {
+        /*parsing: {
+          xAxisKey: 't',
+          yAxisKey: 'h'
+        },*/
+        parsing: false,
+        scales: {
+          x: {
+            type: 'time'
+          }
+        }
+      }
+		};
+
+		const myChart = new Chart(
+			document.getElementById('myChart'),
+			config
+		);
+	</script>
+
+</body>
+</html>
+
